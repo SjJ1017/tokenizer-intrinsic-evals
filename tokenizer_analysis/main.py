@@ -17,6 +17,7 @@ from .metrics.information_theoretic import InformationTheoreticMetrics
 from .metrics.gini import TokenizerGiniMetrics
 from .metrics.morphological import MorphologicalMetrics
 from .metrics.morphscore import MorphScoreMetrics
+from .metrics.morphological_plausibility import MorphologicalPlausibilityMetrics
 from .visualization import TokenizerVisualizer
 from .visualization.latex_tables import LaTeXTableGenerator
 from .visualization.markdown_tables import MarkdownTableGenerator
@@ -42,6 +43,7 @@ class UnifiedTokenizerAnalyzer:
                  morphological_config: Optional[Dict[str, str]] = None,
                  show_global_lines: bool = True,
                  morphscore_config: Optional[Dict[str, Any]] = None,
+                 morphological_plausibility_config: Optional[Dict[str, Any]] = None,
                  plot_tokenizers: Optional[List[str]] = None,
                  per_language_plots: bool = False,
                  faceted_plots: bool = False):
@@ -56,6 +58,7 @@ class UnifiedTokenizerAnalyzer:
             morphological_config: Optional morphological dataset configuration
             show_global_lines: Whether to show global average reference lines in plots
             morphscore_config: Optional MorphScore configuration (requires raw tokenization)
+            morphological_plausibility_config: Optional morphological plausibility configuration
             plot_tokenizers: Optional list of tokenizer names to include in plots
             per_language_plots: Whether to generate per-language plots
             faceted_plots: Whether to generate faceted plots (one subplot per tokenizer)
@@ -117,6 +120,18 @@ class UnifiedTokenizerAnalyzer:
             except (ImportError, ValueError) as e:
                 logger.warning(f"MorphScore metrics disabled: {e}")
                 self.morphscore_metrics = None
+
+        # Initialize Morphological plausibility metrics if config provided
+        self.morphological_plausibility_metrics = None
+        if morphological_plausibility_config:
+            try:
+                self.morphological_plausibility_metrics = MorphologicalPlausibilityMetrics(
+                    input_provider,
+                    **morphological_plausibility_config
+                )
+            except (ImportError, ValueError) as e:
+                logger.warning(f"Morphological plausibility metrics disabled: {e}")
+                self.morphological_plausibility_metrics = None
         
         # Initialize visualizer
         self.visualizer = TokenizerVisualizer(self.plot_tokenizers, plot_save_dir, show_global_lines, per_language_plots, faceted_plots)
@@ -132,6 +147,7 @@ class UnifiedTokenizerAnalyzer:
                     save_plots: bool = True,
                     include_morphological: bool = True,  
                     include_morphscore: bool = True,
+                    include_morphological_plausibility: bool = True,
                     verbose: bool = True,
                     save_tokenized_data: bool = False,
                     tokenized_data_path: str = None) -> Dict[str, Any]:
@@ -142,6 +158,7 @@ class UnifiedTokenizerAnalyzer:
             save_plots: Whether to generate and save plots
             include_morphological: Whether to include morphological analysis (not yet implemented)
             include_morphscore: Whether to include MorphScore analysis (requires access to tokenizers)
+            include_morphological_plausibility: Whether to include morphological plausibility analysis
             verbose: Whether to print detailed results
             save_tokenized_data: Whether to save tokenized data to file
             tokenized_data_path: Path to save tokenized data (defaults to plot_save_dir/tokenized_data.pkl)
@@ -194,6 +211,15 @@ class UnifiedTokenizerAnalyzer:
             
             if verbose:
                 self.morphscore_metrics.print_results(morphscore_results)
+        # Run morphological plausibility metrics if available
+        if self.morphological_plausibility_metrics and include_morphological_plausibility:
+            logger.info("Computing morphological plausibility metrics...")
+            plausibility_results = self.morphological_plausibility_metrics.compute(tokenized_data)
+            results.update(plausibility_results)
+            
+            if verbose:
+                self.morphological_plausibility_metrics.print_results(plausibility_results)
+        
         
         # Save tokenized data if requested
         if save_tokenized_data:
@@ -291,6 +317,18 @@ class UnifiedTokenizerAnalyzer:
                     logger.info(f"Computing MorphScore results for group {group_name}")
                     morphscore_results = self.morphscore_metrics.compute(filtered_data)
                     group_result.update(morphscore_results)
+
+                # Morphological plausibility metrics - filter from base results if available to avoid recomputation
+                if self.morphological_plausibility_metrics and base_results and 'morphological_plausibility' in base_results:
+                    logger.info(f"Filtering morphological plausibility results for group {group_name} (avoiding recomputation)")
+                    plausibility_results = self._filter_morphological_plausibility_results(
+                        base_results['morphological_plausibility'], group_languages
+                    )
+                    group_result['morphological_plausibility'] = plausibility_results
+                elif self.morphological_plausibility_metrics:
+                    logger.info(f"Computing morphological plausibility results for group {group_name}")
+                    plausibility_results = self.morphological_plausibility_metrics.compute(filtered_data)
+                    group_result.update(plausibility_results)
                 
                 group_results[group_name] = group_result
             
@@ -354,6 +392,52 @@ class UnifiedTokenizerAnalyzer:
         
         return filtered_results
     
+    def _filter_morphological_plausibility_results(self, results: Dict[str, Any], target_languages: List[str]) -> Dict[str, Any]:
+        """Filter morphological plausibility results to include only specified languages and recompute summary."""
+        filtered = {
+            'per_tokenizer': {},
+            'summary': {}
+        }
+
+        for tok_name, tok_data in results.get('per_tokenizer', {}).items():
+            filtered_tok = {}
+            if 'per_language' in tok_data:
+                filtered_per_lang = {
+                    lang: data for lang, data in tok_data['per_language'].items()
+                    if lang in target_languages
+                }
+                if filtered_per_lang:
+                    filtered_tok['per_language'] = filtered_per_lang
+
+                    # recompute summary
+                    metric_keys = set()
+                    total_samples = 0
+                    for lang_data in filtered_per_lang.values():
+                        total_samples += lang_data.get('num_samples', 0)
+                        metric_keys.update(k for k in lang_data.keys() if k.startswith('test-'))
+                    summary = {
+                        'languages_evaluated': len(filtered_per_lang),
+                        'total_samples': total_samples,
+                    }
+                    for key in sorted(metric_keys):
+                        values = [lang_data.get(key) for lang_data in filtered_per_lang.values() if key in lang_data]
+                        if values:
+                            summary[f'avg_{key}'] = float(np.mean(values))
+                            summary[f'avg_{key}_std'] = float(np.std(values))
+                    filtered_tok['summary'] = summary
+
+            for key, value in tok_data.items():
+                if key not in ['per_language', 'summary']:
+                    filtered_tok[key] = value
+
+            if filtered_tok:
+                filtered['per_tokenizer'][tok_name] = filtered_tok
+
+        if 'metadata' in results:
+            filtered['metadata'] = results['metadata']
+
+        return filtered
+
     def _filter_morphscore_results(self, morphscore_results: Dict[str, Any], target_languages: List[str]) -> Dict[str, Any]:
         """Filter MorphScore results to include only specified languages and recompute summary statistics."""
         import numpy as np

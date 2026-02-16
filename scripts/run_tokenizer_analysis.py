@@ -139,6 +139,17 @@ def create_sample_morphscore_config(data_dir: str = "morphscore_data") -> Dict[s
         "exclude_single_tok": False
     }
 
+def create_sample_morphological_plausibility_config(data_dir: str = "dataset/morph_plausibility") -> Dict[str, any]:
+    """Create sample morphological plausibility configuration."""
+    return {
+        "data_dir": data_dir,
+        "language_subset": ["eng_Latn"],
+        "thresholds": [0.1],
+        "iterations": 100,
+        "model": "IBM1"
+    }
+
+
 def slim_results_for_json(results: Dict) -> Dict:
     """Create a slimmed-down version of results for JSON export."""
     slimmed = {}
@@ -200,6 +211,10 @@ def slim_results_for_json(results: Dict) -> Dict:
             
             # Keep summary stats for MorphScore analysis
             if metric_name == 'morphscore' and 'summary' in metric_data:
+                slimmed_metric['summary'] = metric_data['summary']
+
+            # Keep summary stats for morphological plausibility analysis
+            if metric_name == 'morphological_plausibility' and 'summary' in metric_data:
                 slimmed_metric['summary'] = metric_data['summary']
             
             # Keep metadata for Gini metrics
@@ -324,6 +339,16 @@ Examples:
         "--morphscore",
         action="store_true",
         help="Enable MorphScore analysis with default settings (requires raw tokenization)"
+    )
+    parser.add_argument(
+        "--morphological-plausibility-config",
+        type=str,
+        help="JSON file with morphological plausibility configuration (requires raw tokenization)"
+    )
+    parser.add_argument(
+        "--morphological-plausibility",
+        action="store_true",
+        help="Enable morphological plausibility analysis with default settings (requires raw tokenization)"
     )
     parser.add_argument(
         "--morphscore-data-dir",
@@ -509,6 +534,14 @@ Examples:
                 morphscore_config = load_config_from_file(args.morphscore_config)
             else:
                 morphscore_config = create_sample_morphscore_config(args.morphscore_data_dir)
+
+        # Configure Morphological plausibility for sample data
+        morphological_plausibility_config = None
+        if args.morphological_plausibility or args.morphological_plausibility_config:
+            if args.morphological_plausibility_config:
+                morphological_plausibility_config = load_config_from_file(args.morphological_plausibility_config)
+            else:
+                morphological_plausibility_config = create_sample_morphological_plausibility_config()
     elif use_tokenized_data:
         # Pre-tokenized data mode
         if not args.tokenized_data_file:
@@ -551,6 +584,11 @@ Examples:
         if args.morphscore or args.morphscore_config:
             logger.warning("MorphScore analysis not supported with pre-tokenized data. Requires raw tokenization.")
             morphscore_config = None
+        # Morphological plausibility not supported with pre-tokenized data
+        morphological_plausibility_config = None
+        if args.morphological_plausibility or args.morphological_plausibility_config:
+            logger.warning("Morphological plausibility analysis not supported with pre-tokenized data. Requires raw tokenization.")
+            morphological_plausibility_config = None
     else:
         # Raw tokenizer mode
         if not args.tokenizer_config:
@@ -583,6 +621,13 @@ Examples:
                 morphscore_config = load_config_from_file(args.morphscore_config)
             else:
                 morphscore_config = create_sample_morphscore_config(args.morphscore_data_dir)
+        # Configure Morphological plausibility for raw tokenizer mode
+        morphological_plausibility_config = None
+        if args.morphological_plausibility or args.morphological_plausibility_config:
+            if args.morphological_plausibility_config:
+                morphological_plausibility_config = load_config_from_file(args.morphological_plausibility_config)
+            else:
+                morphological_plausibility_config = create_sample_morphological_plausibility_config()
     
     # Load language metadata
     logger.info("Loading language metadata...")
@@ -601,6 +646,7 @@ Examples:
             plot_save_dir=args.output_dir,
             morphological_config=morphological_config,
             morphscore_config=morphscore_config,
+            morphological_plausibility_config=morphological_plausibility_config,
             show_global_lines=not args.no_global_lines,
             per_language_plots=args.per_language_plots,
             faceted_plots=args.faceted_plots
@@ -644,6 +690,7 @@ Examples:
             plot_save_dir=args.output_dir,
             morphological_config=morphological_config,
             morphscore_config=morphscore_config,
+            morphological_plausibility_config=morphological_plausibility_config,
             show_global_lines=not args.no_global_lines,
             per_language_plots=args.per_language_plots,
             faceted_plots=args.faceted_plots
@@ -662,6 +709,7 @@ Examples:
             save_plots=not args.no_plots,
             include_morphological=morphological_config is not None,
             include_morphscore=morphscore_config is not None,
+            include_morphological_plausibility=morphological_plausibility_config is not None,
             verbose=args.verbose,
             save_tokenized_data=args.save_tokenized_data,
             tokenized_data_path=args.tokenized_data_output_path
@@ -672,6 +720,7 @@ Examples:
             save_plots=not args.no_plots,
             include_morphological=morphological_config is not None,
             include_morphscore=morphscore_config is not None,
+            include_morphological_plausibility=morphological_plausibility_config is not None,
             verbose=args.verbose,
             save_tokenized_data=args.save_tokenized_data,
             tokenized_data_path=args.tokenized_data_output_path
