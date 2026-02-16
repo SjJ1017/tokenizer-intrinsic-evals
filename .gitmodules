@@ -1,3 +1,6 @@
 [submodule "morphscore"]
 	path = morphscore
 	url = https://github.com/cimeister/morphscore
+[submodule "morph-tok-eval"]
+	path = morph-tok-eval
+	url = https://github.com/SjJ1017/morph-tok-eval.git
