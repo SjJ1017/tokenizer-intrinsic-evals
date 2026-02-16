@@ -327,6 +327,49 @@ Note that you can override this behavior by setting 'language_subset' in `--morp
 - Download MorphScore datasets from links in [MorphScore README](morphscore/README.md)
 - Ensure language codes in your language config match supported mappings
 
+### Morphological Plausibility Configuration
+
+This metric evaluates tokenizer segmentations against UniMorph/UniSeg gold files using alignment scores.
+
+#### Default Configuration
+If morphological plausibility data files are under `dataset/morph_plausibility/` and you pass `--morphological-plausibility`, no additional configuration is required.
+
+#### Custom Data Location Configuration
+Use `--morphological-plausibility-config` to specify settings. Example:
+
+```json
+{
+  "data_dir": "/path/to/morph_plausibility",
+  "language_subset": [
+    "eng_Latn",
+    "ces_Latn",
+    "deu_Latn",
+    "fin_Latn",
+    "bos_Latn",
+    "hrv_Latn",
+    "hun_Latn",
+    "hye_Armn",
+    "kan_Knda",
+    "nld_Latn",
+    "slk_Latn"
+  ],
+  "thresholds": [0.1, 0.01],
+  "iterations": 100,
+  "model": "IBM1"
+}
+```
+
+**Supported Language Codes**:
+- ISO 639-3 with script codes (e.g., `eng_Latn`)
+
+**Data Requirements**:
+- Source data are based on the UniMorph/UniSeg files in:
+```
+https://github.com/abishekjs/morph-tok-eval/tree/main/data/morpho
+```
+- The provided data are not comprehensive: only 10 languages are currently available.
+- Gathering these resources will take some effort.
+
 ### Pre-tokenized Data
 
 #### Generating Pre-tokenized Data

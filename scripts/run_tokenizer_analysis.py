@@ -139,12 +139,12 @@ def create_sample_morphscore_config(data_dir: str = "morphscore_data") -> Dict[s
         "exclude_single_tok": False
     }
 
-def create_sample_morphological_plausibility_config(data_dir: str = "dataset/morph_plausibility") -> Dict[str, any]:
+def create_sample_morphological_plausibility_config(data_dir: str = "morph_plausibility_data") -> Dict[str, any]:
     """Create sample morphological plausibility configuration."""
     return {
         "data_dir": data_dir,
-        "language_subset": ["eng_Latn"],
-        "thresholds": [0.1],
+        "language_subset": ["eng_Latn", "ces_Latn", "deu_Latn", "fin_Latn", "bos_Latn", "hrv_Latn", "hun_Latn", "hye_Armn", "kan_Knda", "nld_Latn", "slk_Latn"],
+        "thresholds": [0.1, 0.01],
         "iterations": 100,
         "model": "IBM1"
     }

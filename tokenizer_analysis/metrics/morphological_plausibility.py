@@ -34,7 +34,22 @@ except ImportError:
 
 LANGUAGE_TO_GOLD_FILE = {
     "eng_Latn": "eng-unimorph2uniseg_CELEX.tsv",
+    "ces_Latn": "ces-unimorph2uniseg_derinet.tsv",
+    "deu_Latn": "deu-unimorph2uniseg_CELEX.tsv",
+    "fin_Latn": "fin-unimorph2uniseg_morphynet.tsv",
+
+    # srp, bos, and hrv all use the same morphological data from the macrolanguage hbs (Serbo-Croatian)
+    # TODO "srp_Cyrl": "hbs-unimorph2uniseg_MorphyNet.tsv", Serbian uses both Cyrillic and Latin scripts. The coupus we have is in Cyrillic, but the resource is in Latin. conversion is needed.
+    "bos_Latn": "hbs-unimorph2uniseg_MorphyNet.tsv",
+    "hrv_Latn": "hbs-unimorph2uniseg_MorphyNet.tsv",
+
+    "hun_Latn": "hun-unimorph2uniseg_MorphyNet.tsv",
+    "hye_Armn": "hye-unimorph2uniseg.tsv",
+    "kan_Knda": "kan-unimorph2uniseg_KCIS.tsv",
+    "nld_Latn": "nld-unimorph2uniseg_CELEX.tsv",
+    "slk_Latn": "slk-unimorph2olostiak.tsv",
 }
+
 
 
 class MorphologicalPlausibilityMetrics(BaseMetrics):
