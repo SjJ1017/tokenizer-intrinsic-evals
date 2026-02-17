@@ -19,6 +19,7 @@ import numpy as np
 from .base import BaseMetrics
 from ..core.input_types import TokenizedData
 from ..core.input_providers import InputProvider, RawTokenizationProvider
+from ..loaders.constants import FLORES_to_ISO639_2
 
 logger = logging.getLogger(__name__)
 
@@ -30,26 +31,6 @@ except ImportError:
         "Morphological plausibility library not available. Metrics will be disabled."
     )
     MORPH_PLAUSIBILITY_AVAILABLE = False
-
-
-LANGUAGE_TO_GOLD_FILE = {
-    "eng_Latn": "eng-unimorph2uniseg_CELEX.tsv",
-    "ces_Latn": "ces-unimorph2uniseg_derinet.tsv",
-    "deu_Latn": "deu-unimorph2uniseg_CELEX.tsv",
-    "fin_Latn": "fin-unimorph2uniseg_morphynet.tsv",
-
-    # srp, bos, and hrv all use the same morphological data from the macrolanguage hbs (Serbo-Croatian)
-    # TODO "srp_Cyrl": "hbs-unimorph2uniseg_MorphyNet.tsv", Serbian uses both Cyrillic and Latin scripts. The coupus we have is in Cyrillic, but the resource is in Latin. conversion is needed.
-    "bos_Latn": "hbs-unimorph2uniseg_MorphyNet.tsv",
-    "hrv_Latn": "hbs-unimorph2uniseg_MorphyNet.tsv",
-
-    "hun_Latn": "hun-unimorph2uniseg_MorphyNet.tsv",
-    "hye_Armn": "hye-unimorph2uniseg.tsv",
-    "kan_Knda": "kan-unimorph2uniseg_KCIS.tsv",
-    "nld_Latn": "nld-unimorph2uniseg_CELEX.tsv",
-    "slk_Latn": "slk-unimorph2olostiak.tsv",
-}
-
 
 
 class MorphologicalPlausibilityMetrics(BaseMetrics):
@@ -170,14 +151,16 @@ class MorphologicalPlausibilityMetrics(BaseMetrics):
         return count
 
     def _resolve_gold_file(self, language: str) -> Optional[str]:
-        filename = LANGUAGE_TO_GOLD_FILE.get(language)
+        filename = FLORES_to_ISO639_2.get(language)
         if not filename:
             logger.warning("No gold file mapping for language: %s", language)
             return None
         path = os.path.join(self.data_dir, filename)
         if not os.path.exists(path):
-            logger.warning("Gold file not found for %s at %s", language, path)
-            return None
+            path = os.path.join(self.data_dir, f"{filename}.tsv")
+            if not os.path.exists(path):
+                logger.warning("Gold file not found for %s at %s", language, path)
+                return None
         return path
 
     def compute(
@@ -228,7 +211,6 @@ class MorphologicalPlausibilityMetrics(BaseMetrics):
                     gold_file = self._resolve_gold_file(lang)
                     if not gold_file:
                         continue
-
                     tmp_fd, tmp_path = tempfile.mkstemp(suffix=".tsv")
                     os.close(tmp_fd)
                     try:

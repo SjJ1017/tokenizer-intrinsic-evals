@@ -365,10 +365,8 @@ Use `--morphological-plausibility-config` to specify settings. Example:
 **Data Requirements**:
 - Source data are based on the UniMorph/UniSeg files in:
 ```
-https://github.com/abishekjs/morph-tok-eval/tree/main/data/morpho
+https://huggingface.co/datasets/SHENJJ1017/morph_features
 ```
-- The provided data are not comprehensive: only 10 languages are currently available.
-- Gathering these resources will take some effort.
 
 ### Pre-tokenized Data
 
