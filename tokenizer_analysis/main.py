@@ -747,11 +747,13 @@ class UnifiedTokenizerAnalyzer:
                     if tok_name in summary:
                         s = summary[tok_name]
                         em = s.get('exact_match_rate', 0.0)
-                        cer = s.get('mean_cer', 0.0)
+                        cer = s.get('mean_cer')
                         unk = s.get('unk_token_rate', 0.0)
-                        ws = s.get('whitespace_fidelity', 0.0)
+                        ws = s.get('whitespace_fidelity')
                         n = s.get('texts_analyzed', 0)
-                        print(f"{tok_name:20}: EM={em:.3f}  CER={cer:.4f}  UNK={unk:.4f}  WS={ws:.3f}  ({n} texts)")
+                        cer_str = f"{cer:.4f}" if cer is not None else "N/A"
+                        ws_str = f"{ws:.3f}" if ws is not None else "N/A"
+                        print(f"{tok_name:20}: EM={em:.3f}  CER={cer_str}  UNK={unk:.4f}  WS={ws_str}  ({n} texts)")
 
         print("\n" + "="*60)
     
