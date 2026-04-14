@@ -109,66 +109,23 @@ class UnifiedTokenizerAnalyzer:
             except Exception as e:
                 logger.warning(f"Could not load code data: {e}")
 
-        # Initialize metrics classes
-        self.basic_metrics = BasicTokenizationMetrics(
-            input_provider, measurement_config, language_metadata,
-            code_texts=code_texts,
-            math_data_path=math_data_path,
-            use_builtin_math_data=use_builtin_math_data,
-        )
-        
-        # Initialize information-theoretic metrics
-        self.info_metrics = InformationTheoreticMetrics(
-            input_provider, measurement_config=measurement_config, language_metadata=language_metadata
-        )
-        
-        # Initialize Gini metrics
-        self.gini_metrics = TokenizerGiniMetrics(
-            input_provider, measurement_config=measurement_config, language_metadata=language_metadata
-        )
-        
         # Initialize vocabulary overlap metrics (only when explicitly enabled)
         self.vocabulary_overlap_metrics = (
             VocabularyOverlapMetrics(input_provider, languages=overlap_languages)
             if run_vocabulary_overlap else None
         )
-        # Initialize morphological metrics if config provided
+
+        # Skipped in temp branch: basic, info, gini, morphological, morphscore,
+        # digit_boundary, utf8_integrity, ast_boundary metrics
+        self.basic_metrics = None
+        self.info_metrics = None
+        self.gini_metrics = None
         self.morphological_metrics = None
-        if morphological_config:
-            self.morphological_metrics = MorphologicalMetrics(
-                input_provider, morphological_config=morphological_config
-            )
-        
-        # Initialize MorphScore metrics if config provided
         self.morphscore_metrics = None
-        if morphscore_config:
-            try:
-                self.morphscore_metrics = MorphScoreMetrics(
-                    input_provider, 
-                    **morphscore_config
-                )
-            except (ImportError, ValueError) as e:
-                logger.warning(f"MorphScore metrics disabled: {e}")
-
-        # Initialize digit boundary metrics (always available -- no external data)
-        self.digit_boundary_metrics = DigitBoundaryMetrics(
-            input_provider,
-            math_data_path=math_data_path,
-            use_builtin_math_data=use_builtin_math_data,
-        )
-
-        # Initialize UTF-8 integrity metrics (always available -- no external data)
-        self.utf8_integrity_metrics = UTF8IntegrityMetrics(input_provider)
-
-        # Initialize AST boundary metrics if config provided
+        self.digit_boundary_metrics = None
+        self.utf8_integrity_metrics = None
         self.ast_boundary_metrics = None
-        if code_ast_config is not None:
-            try:
-                self.ast_boundary_metrics = ASTBoundaryMetrics(
-                    input_provider, code_config=code_ast_config
-                )
-            except (ImportError, ValueError) as e:
-                logger.warning(f"AST boundary metrics disabled: {e}")
+
 
         # Initialize visualizer
         self.visualizer = TokenizerVisualizer(self.plot_tokenizers, plot_save_dir, show_global_lines, per_language_plots, faceted_plots)
@@ -233,76 +190,11 @@ class UnifiedTokenizerAnalyzer:
             if per_tok:
                 results['encoding_speed'] = {'per_tokenizer': per_tok}
         
-        # Run basic tokenization metrics
-        logger.info("Computing basic tokenization metrics...")
-        basic_results = self.basic_metrics.compute(
-            tokenized_data, include_reconstruction=include_reconstruction,
-            cer_time_budget_s=cer_time_budget_s)
-        results.update(basic_results)
-
-        if verbose:
-            self._print_basic_results(basic_results)
-
-        # Run information-theoretic metrics
-        logger.info("Computing information-theoretic metrics...")
-        info_results = self.info_metrics.compute(tokenized_data)
-        results.update(info_results)
-        
-        # Run Gini metrics
-        logger.info("Computing Gini metrics...")
-        gini_results = self.gini_metrics.compute(tokenized_data)
-        results.update(gini_results)
-
         # Run vocabulary overlap metrics (only when enabled)
         if self.vocabulary_overlap_metrics:
             logger.info("Computing vocabulary overlap metrics...")
             vocabulary_overlap_results = self.vocabulary_overlap_metrics.compute(tokenized_data)
             results.update(vocabulary_overlap_results)
-
-        # Run morphological metrics if available
-        if self.morphological_metrics and include_morphological:
-            logger.info("Computing morphological metrics...")
-            morphological_results = self.morphological_metrics.compute(tokenized_data)
-            results.update(morphological_results)
-            
-            if verbose:
-                self.morphological_metrics.print_results(morphological_results)
-        
-        # Run MorphScore metrics if available
-        if self.morphscore_metrics and include_morphscore:
-            logger.info("Computing MorphScore metrics...")
-            morphscore_results = self.morphscore_metrics.compute(tokenized_data)
-            results.update(morphscore_results)
-            
-            if verbose:
-                self.morphscore_metrics.print_results(morphscore_results)
-        
-        # Run digit boundary metrics if requested
-        if include_digit_boundary:
-            logger.info("Computing digit boundary metrics...")
-            digit_boundary_results = self.digit_boundary_metrics.compute(tokenized_data)
-            results.update(digit_boundary_results)
-
-            if verbose:
-                self.digit_boundary_metrics.print_results(digit_boundary_results)
-
-        # Run AST boundary metrics if available
-        if self.ast_boundary_metrics and include_code_ast:
-            logger.info("Computing AST boundary alignment metrics...")
-            ast_results = self.ast_boundary_metrics.compute(tokenized_data)
-            results.update(ast_results)
-
-            if verbose:
-                self.ast_boundary_metrics.print_results(ast_results)
-
-        # Run UTF-8 integrity metrics if requested
-        if include_utf8_integrity:
-            logger.info("Computing UTF-8 character boundary integrity metrics...")
-            utf8_results = self.utf8_integrity_metrics.compute(tokenized_data)
-            results.update(utf8_results)
-
-            if verbose:
-                self.utf8_integrity_metrics.print_results(utf8_results)
 
         # Save tokenized data if requested
         if save_tokenized_data:
